@@ -21,6 +21,7 @@ import {
 import { Logo } from "@/components/polaris/core";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { saveAuthSession } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -55,7 +56,7 @@ const ROLE_DATA: Record<
   user: {
     title: "User / Explorer",
     badge: "Public Access",
-    desc: "Explore polar research, timeline milestones, satellite records, and voice AI assistant.",
+    desc: "Create an account or sign in to explore polar research, timeline milestones, satellite records, and the voice AI assistant.",
     defaultEmail: "aarav.sharma@polaris.gov.in",
     targetRoute: "/user",
     icon: User,
@@ -105,7 +106,7 @@ function LoginPage() {
   const [role, setRole] = useState<AuthRole>("user");
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState(ROLE_DATA.user.defaultEmail);
-  const [password, setPassword] = useState("••••••••••••");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(true);
   const [isFreezing, setIsFreezing] = useState(false);
@@ -117,15 +118,21 @@ function LoginPage() {
     setIsFreezing(true);
     setRole(newRole);
     setEmail(ROLE_DATA[newRole].defaultEmail);
+    setPassword("");
     setTimeout(() => setIsFreezing(false), 600);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters.");
+      return;
+    }
     if (!agreed) {
       toast.error("Please agree to the terms of service.");
       return;
     }
+    saveAuthSession(role, email.trim().toLowerCase());
     toast.success(`Welcome to POLARIS (${currentRole.title})`, {
       description: `Authenticated into ${role.toUpperCase()} workspace.`,
     });
@@ -141,12 +148,9 @@ function LoginPage() {
       {/* Top Header */}
       <div className="w-full max-w-5xl mb-4 flex items-center justify-between z-10">
         <Logo />
-        <Link
-          to="/"
-          className="text-xs font-semibold text-slate-300 hover:text-primary transition-colors flex items-center gap-1"
-        >
-          ← Back to Homepage
-        </Link>
+        <span className="text-xs font-semibold text-slate-300">
+          Secure portal access
+        </span>
       </div>
 
       {/* Main Split Mockup Auth Card */}
@@ -336,8 +340,8 @@ function LoginPage() {
         <div className="hidden md:block md:col-span-6 relative overflow-hidden">
           {/* A separate polar image keeps the reference composition while fitting POLARIS. */}
           <img
-            src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=85"
-            alt="Snow-covered polar mountain and glacier landscape"
+            src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=85"
+            alt="Clear turquoise water viewed from above"
             className="absolute inset-0 h-full w-full object-cover"
           />
 

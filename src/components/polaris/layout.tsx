@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Bell, Bookmark, Compass, Globe2, LayoutDashboard, Library, LogOut,
@@ -7,6 +7,7 @@ import {
 import { Logo } from "./core";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { clearAuthSession, getAuthSession } from "@/lib/auth";
 
 export type Role = "user" | "researcher" | "admin";
 
@@ -54,6 +55,13 @@ export function AppLayout({ role, children }: { role: Role; children: ReactNode 
   const nav = navConfig[role];
   const meta = roleMeta[role];
 
+  useEffect(() => {
+    const session = getAuthSession();
+    if (!session || session.role !== role) {
+      navigate({ to: "/login" });
+    }
+  }, [navigate, role]);
+
   const isActive = (to: string) =>
     to === `/${role}` ? pathname === to : pathname.startsWith(to);
 
@@ -86,8 +94,9 @@ export function AppLayout({ role, children }: { role: Role; children: ReactNode 
       <div className="border-t border-sidebar-border p-3">
         <button
           onClick={() => {
+            clearAuthSession();
             toast.info("Signed out of the demo session");
-            navigate({ to: "/" });
+            navigate({ to: "/login" });
           }}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/60 hover:text-foreground"
         >

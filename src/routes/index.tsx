@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
   ArrowRight, Compass, FlaskConical, Globe2, Landmark, Library,
@@ -9,6 +9,9 @@ import { timelinePeriods } from "@/lib/data/timeline";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: () => {
+    throw redirect({ to: "/login" });
+  },
   head: () => ({
     meta: [
       { title: "POLARIS — One Gateway to Polar Science" },

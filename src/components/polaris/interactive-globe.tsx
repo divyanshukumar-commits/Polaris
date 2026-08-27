@@ -1,381 +1,303 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { MapPin, RotateCcw, Snowflake, Sun, X } from "lucide-react";
+import { expeditions } from "@/lib/data/expeditions";
+import { researchItems } from "@/lib/data/research";
 import { latLonToVec3, worldGeoData } from "@/lib/geojson-simplified";
+import type { Expedition } from "@/lib/data/types";
+import { cn } from "@/lib/utils";
 
 interface InteractiveGlobeProps {
   className?: string;
+  onSelect?: (expedition: Expedition) => void;
 }
 
-export function InteractiveGlobe({ className }: InteractiveGlobeProps) {
+type GlobeMarker = Expedition & { category: "Research station" | "Expedition" };
+
+const markers: GlobeMarker[] = expeditions.map((expedition) => ({
+  ...expedition,
+  category: expedition.location.toLowerCase().includes("station") ? "Research station" : "Expedition",
+}));
+
+const markerColors = { Active: 0x34d399, Upcoming: 0xfbbf24, Completed: 0x38bdf8 };
+
+function createFallbackTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 2048;
+  canvas.height = 1024;
+  const context = canvas.getContext("2d");
+  if (!context) return new THREE.CanvasTexture(canvas);
+  const ocean = context.createLinearGradient(0, 0, 0, canvas.height);
+  ocean.addColorStop(0, "#123653");
+  ocean.addColorStop(0.5, "#0b4565");
+  ocean.addColorStop(1, "#071b31");
+  context.fillStyle = ocean;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "#617b67";
+  for (const continent of worldGeoData.continents) {
+    context.beginPath();
+    continent.points.forEach(([lon, lat], index) => {
+      const x = ((lon + 180) / 360) * canvas.width;
+      const y = ((90 - lat) / 180) * canvas.height;
+      index === 0 ? context.moveTo(x, y) : context.lineTo(x, y);
+    });
+    context.fill();
+  }
+  return new THREE.CanvasTexture(canvas);
+}
+
+function toPosition(lat: number, lon: number, radius: number) {
+  return new THREE.Vector3(...latLonToVec3(lat, lon)).multiplyScalar(radius);
+}
+
+export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const globeRef = useRef<THREE.Group | null>(null);
-  const [hoveredLocation, setHoveredLocation] = useState<string>("");
+  const onSelectRef = useRef(onSelect);
+  const [selected, setSelected] = useState<GlobeMarker | null>(null);
+  const [hovered, setHovered] = useState<GlobeMarker | null>(null);
+  const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
+  const [showMarkers, setShowMarkers] = useState(true);
+  const [showIce, setShowIce] = useState(true);
+  const [dayLight, setDayLight] = useState(true);
+
+  onSelectRef.current = onSelect;
+  const [resetView, setResetView] = useState(0);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    // Scene setup
+    const container = containerRef.current;
+    if (!container) return;
     const scene = new THREE.Scene();
-    sceneRef.current = scene;
-    scene.background = new THREE.Color(0x0a0e27);
+    const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    camera.position.z = 3.1;
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    container.appendChild(renderer.domElement);
 
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      containerRef.current.clientWidth / containerRef.current.clientHeight,
-      0.1,
-      1000,
-    );
-    camera.position.z = 2.5;
-
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true,
-    });
-    rendererRef.current = renderer;
-    renderer.setSize(
-      containerRef.current.clientWidth,
-      containerRef.current.clientHeight,
-    );
-    renderer.setPixelRatio(window.devicePixelRatio);
-    containerRef.current.appendChild(renderer.domElement);
-
-    // Create globe group
     const globeGroup = new THREE.Group();
-    globeRef.current = globeGroup;
     scene.add(globeGroup);
-
-    // Globe sphere geometry
-    const geometry = new THREE.IcosahedronGeometry(1, 64);
-
-    // Create canvas texture for Earth
-    const canvas = document.createElement("canvas");
-    canvas.width = 2048;
-    canvas.height = 1024;
-    const ctx = canvas.getContext("2d")!;
-
-    // Draw Earth surface
-    // Ocean blue
-    ctx.fillStyle = "#1a4d7a";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw continents in greenish-brown
-    ctx.fillStyle = "#2d5a3d";
-    for (const continent of worldGeoData.continents) {
-      ctx.beginPath();
-      let first = true;
-      for (const [lon, lat] of continent.points) {
-        const x = ((lon + 180) / 360) * canvas.width;
-        const y = ((90 - lat) / 180) * canvas.height;
-        if (first) {
-          ctx.moveTo(x, y);
-          first = false;
-        } else {
-          ctx.lineTo(x, y);
-        }
-      }
-      ctx.fill();
-    }
-
-    // Add subtle grid lines for latitude
-    ctx.strokeStyle = "rgba(100, 150, 200, 0.15)";
-    ctx.lineWidth = 1;
-    for (let lat = -80; lat <= 80; lat += 20) {
-      const y = ((90 - lat) / 180) * canvas.height;
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
-
-    // Longitude lines
-    for (let lon = -180; lon <= 180; lon += 20) {
-      const x = ((lon + 180) / 360) * canvas.width;
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.magFilter = THREE.LinearFilter;
-    texture.minFilter = THREE.LinearMipmapLinearFilter;
-    texture.encoding = THREE.sRGBEncoding;
-
-    const material = new THREE.MeshPhongMaterial({
-      map: texture,
-      emissive: new THREE.Color(0x111827),
-      emissiveIntensity: 0.3,
-      shininess: 5,
+    const earthGeometry = new THREE.SphereGeometry(1, 96, 96);
+    const fallbackTexture = createFallbackTexture();
+    const earthMaterial = new THREE.MeshPhongMaterial({
+      map: fallbackTexture,
+      shininess: 18,
+      specular: new THREE.Color(0x4b7890),
+    });
+    const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+    globeGroup.add(earth);
+    const earthTexture = new THREE.TextureLoader().load("https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/land_ocean_ice_2048.jpg", (texture) => {
+      texture.encoding = THREE.sRGBEncoding;
+      earthMaterial.map = texture;
+      earthMaterial.needsUpdate = true;
+    });
+    const surfaceNormal = new THREE.TextureLoader().load("https://threejs.org/examples/textures/planets/earth_normal_2048.jpg", (texture) => {
+      earthMaterial.normalMap = texture;
+      earthMaterial.normalScale.set(0.22, 0.22);
+      earthMaterial.needsUpdate = true;
+    });
+    const surfaceSpecular = new THREE.TextureLoader().load("https://threejs.org/examples/textures/planets/earth_specular_2048.jpg", (texture) => {
+      earthMaterial.specularMap = texture;
+      earthMaterial.needsUpdate = true;
     });
 
-    const globe = new THREE.Mesh(geometry, material);
-    globeGroup.add(globe);
+    const cloudMaterial = new THREE.MeshPhongMaterial({
+      map: new THREE.TextureLoader().load("https://threejs.org/examples/textures/planets/earth_clouds_1024.png"),
+      transparent: true,
+      opacity: 0.42,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const clouds = new THREE.Mesh(new THREE.SphereGeometry(1.018, 64, 64), cloudMaterial);
+    globeGroup.add(clouds);
 
-    // Use NASA's public Blue Marble texture for recognizable geography, with
-    // the generated map remaining visible until the remote asset is ready.
-    const earthTexture = new THREE.TextureLoader().load(
-      "https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/land_ocean_ice_2048.jpg",
-      (loadedTexture) => {
-        loadedTexture.encoding = THREE.sRGBEncoding;
-        material.map = loadedTexture;
-        material.needsUpdate = true;
-      },
+    const atmosphere = new THREE.Mesh(
+      new THREE.SphereGeometry(1.045, 64, 64),
+      new THREE.MeshBasicMaterial({ color: 0x58b9e6, transparent: true, opacity: 0.16, side: THREE.BackSide }),
     );
-
-    // Atmosphere glow
-    const atmosphereGeometry = new THREE.IcosahedronGeometry(1.02, 64);
-    const atmosphereMaterial = new THREE.MeshBasicMaterial({
-      color: 0x4da6ff,
-      transparent: true,
-      opacity: 0.15,
-      side: THREE.BackSide,
-    });
-    const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
     globeGroup.add(atmosphere);
+    const iceMaterial = new THREE.MeshPhongMaterial({ color: 0xd9f4ff, transparent: true, opacity: 0.82 });
+    const northIce = new THREE.Mesh(new THREE.SphereGeometry(1.012, 64, 32, 0, Math.PI * 2, 0, Math.PI / 7), iceMaterial);
+    const southIce = new THREE.Mesh(new THREE.SphereGeometry(1.012, 64, 32, 0, Math.PI * 2, Math.PI - Math.PI / 7, Math.PI / 7), iceMaterial);
+    globeGroup.add(northIce, southIce);
 
-    // Stars background
-    const starsGeometry = new THREE.BufferGeometry();
-    const starCount = 400;
-    const positions = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount * 3; i += 3) {
-      positions[i] = (Math.random() - 0.5) * 200;
-      positions[i + 1] = (Math.random() - 0.5) * 200;
-      positions[i + 2] = (Math.random() - 0.5) * 200;
-    }
-    starsGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    const starsMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.7,
-      opacity: 0.6,
-      transparent: true,
+    const markerGroup = new THREE.Group();
+    globeGroup.add(markerGroup);
+    const markerMeshes = new Map<THREE.Object3D, GlobeMarker>();
+    markers.forEach((marker) => {
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.027, 12, 12), new THREE.MeshBasicMaterial({ color: markerColors[marker.status] }));
+      mesh.position.copy(toPosition(marker.lat, marker.lon, 1.035));
+      markerGroup.add(mesh);
+      markerMeshes.set(mesh, marker);
     });
-    const stars = new THREE.Points(starsGeometry, starsMaterial);
-    scene.add(stars);
 
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
+    const starsGeometry = new THREE.BufferGeometry();
+    const starPositions = new Float32Array(420 * 3);
+    for (let index = 0; index < starPositions.length; index += 3) {
+      const radius = 18 + Math.random() * 22;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      starPositions[index] = radius * Math.sin(phi) * Math.cos(theta);
+      starPositions[index + 1] = radius * Math.cos(phi);
+      starPositions[index + 2] = radius * Math.sin(phi) * Math.sin(theta);
+    }
+    starsGeometry.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
+    const starsMaterial = new THREE.PointsMaterial({ color: 0xc9e8f3, size: 0.035, transparent: true, opacity: 0.45 });
+    scene.add(new THREE.Points(starsGeometry, starsMaterial));
+    const ambientLight = new THREE.AmbientLight(0x6f8da3, 0.2);
+    const sunLight = new THREE.DirectionalLight(0xfff6e6, dayLight ? 2.1 : 0.58);
+    sunLight.position.set(4, 2, 5);
+    scene.add(ambientLight, sunLight);
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    sunLight.position.set(5, 3, 5);
-    scene.add(sunLight);
-
-    const rimLight = new THREE.DirectionalLight(0x87ceeb, 0.3);
-    rimLight.position.set(-5, -3, -5);
-    scene.add(rimLight);
-
-    // Interaction state
-    const state = {
-      isDragging: false,
-      previousMousePosition: { x: 0, y: 0 },
-      mouseVelocity: { x: 0, y: 0 },
-      rotationVelocity: { x: 0, y: 0 },
-      damping: 0.95,
-      autoRotateSpeed: 0.0003,
-    };
-
-    // Mouse events
-    const getPointer = (e: MouseEvent) => {
-      const bounds = renderer.domElement.getBoundingClientRect();
-      return new THREE.Vector2(
-        ((e.clientX - bounds.left) / bounds.width) * 2 - 1,
-        -((e.clientY - bounds.top) / bounds.height) * 2 + 1,
-      );
-    };
-
-    const onMouseDown = (e: MouseEvent) => {
-      state.isDragging = true;
-      state.previousMousePosition = { x: e.clientX, y: e.clientY };
-      state.rotationVelocity = { x: 0, y: 0 };
-    };
-
-    const onMouseMove = (e: MouseEvent) => {
-      if (state.isDragging) {
-        const deltaX = e.clientX - state.previousMousePosition.x;
-        const deltaY = e.clientY - state.previousMousePosition.y;
-
-        state.rotationVelocity.x = deltaY * 0.01;
-        state.rotationVelocity.y = deltaX * 0.01;
-
-        globeGroup.rotation.x += state.rotationVelocity.x;
-        globeGroup.rotation.y += state.rotationVelocity.y;
-
-        state.previousMousePosition = { x: e.clientX, y: e.clientY };
-      } else {
-        // Check for hover over locations
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(getPointer(e), camera);
-        globeGroup.updateMatrixWorld();
-
-        let closestCity = "";
-        let minDistance = Infinity;
-
-        for (const city of worldGeoData.cities) {
-          const vec = latLonToVec3(city.lat, city.lon);
-          const cityPoint = new THREE.Vector3(...vec).applyMatrix4(globeGroup.matrixWorld);
-          const cityDistance = raycaster.ray.distanceToPoint(cityPoint);
-          if (cityDistance < 0.3 && cityDistance < minDistance) {
-            minDistance = cityDistance;
-            closestCity = city.name;
-          }
-        }
-
-        setHoveredLocation(closestCity);
-      }
-    };
-
-    const onMouseUp = () => {
-      state.isDragging = false;
-    };
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      camera.position.z += e.deltaY * 0.001;
-      camera.position.z = Math.max(1.5, Math.min(4, camera.position.z));
-    };
-
-    // Click for ripple effect
-    const onClick = (e: MouseEvent) => {
-      const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(getPointer(e), camera);
-
-      const intersects = raycaster.intersectObject(globe);
-      if (intersects.length > 0) {
-        createRipple(intersects[0].point);
-      }
-    };
-
-    const createRipple = (point: THREE.Vector3) => {
-      const rippleGeometry = new THREE.BufferGeometry();
-      const rippleMaterial = new THREE.LineBasicMaterial({
-        color: 0x4da6ff,
-        transparent: true,
-        opacity: 0.8,
-      });
-
-      const rippleVertices = [];
-      const rippleRadius = 0.3;
-      for (let i = 0; i < 32; i++) {
-        const angle = (i / 32) * Math.PI * 2;
-        const x = point.x + rippleRadius * Math.cos(angle);
-        const y = point.y + rippleRadius * Math.sin(angle);
-        const z = point.z + rippleRadius * Math.sin(angle);
-        rippleVertices.push(x, y, z);
-      }
-
-      rippleGeometry.setAttribute(
-        "position",
-        new THREE.BufferAttribute(new Float32Array(rippleVertices), 3),
-      );
-
-      const ripple = new THREE.LineLoop(rippleGeometry, rippleMaterial);
-      globeGroup.add(ripple);
-
-      // Animate ripple expansion and fade
-      let frame = 0;
-      const maxFrames = 60;
-      const originalScale = 1;
-
-      const animateRipple = () => {
-        frame++;
-        ripple.scale.multiplyScalar(1.03);
-        rippleMaterial.opacity = 0.8 * (1 - frame / maxFrames);
-
-        if (frame < maxFrames) {
-          requestAnimationFrame(animateRipple);
-        } else {
-          globeGroup.remove(ripple);
-          rippleGeometry.dispose();
-          rippleMaterial.dispose();
-        }
-      };
-
-      animateRipple();
-    };
-
-    renderer.domElement.addEventListener("mousedown", onMouseDown);
-    renderer.domElement.addEventListener("mousemove", onMouseMove);
-    renderer.domElement.addEventListener("mouseup", onMouseUp);
-    renderer.domElement.addEventListener("click", onClick);
-    renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
-
-    // Resize handler
-    const handleResize = () => {
-      if (!containerRef.current) return;
-      const width = containerRef.current.clientWidth;
-      const height = containerRef.current.clientHeight;
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const state = { dragging: false, moved: false, previousX: 0, previousY: 0, velocityX: 0, velocityY: 0, target: null as THREE.Vector2 | null };
+    const resize = () => {
+      const width = container.clientWidth;
+      const height = Math.max(container.clientHeight, 260);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
+      renderer.setSize(width, height, false);
     };
-
-    window.addEventListener("resize", handleResize);
-
-    // Animation loop
-    const animate = () => {
-      requestAnimationFrame(animate);
-
-      if (!state.isDragging) {
-        // Auto-rotate when idle
-        globeGroup.rotation.y += state.autoRotateSpeed;
-
-        // Apply inertia damping
-        state.rotationVelocity.x *= state.damping;
-        state.rotationVelocity.y *= state.damping;
-
-        if (
-          Math.abs(state.rotationVelocity.x) > 0.0001 ||
-          Math.abs(state.rotationVelocity.y) > 0.0001
-        ) {
-          globeGroup.rotation.x += state.rotationVelocity.x;
-          globeGroup.rotation.y += state.rotationVelocity.y;
+    const updatePointer = (event: PointerEvent) => {
+      const bounds = renderer.domElement.getBoundingClientRect();
+      pointer.set(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
+    };
+    const hitMarker = () => {
+      raycaster.setFromCamera(pointer, camera);
+      const hit = raycaster.intersectObjects(markerGroup.children, false)[0];
+      return hit ? markerMeshes.get(hit.object) ?? null : null;
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      state.dragging = true;
+      state.moved = false;
+      state.previousX = event.clientX;
+      state.previousY = event.clientY;
+      state.velocityX = 0;
+      state.velocityY = 0;
+      renderer.domElement.setPointerCapture(event.pointerId);
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      updatePointer(event);
+      if (state.dragging) {
+        const deltaX = event.clientX - state.previousX;
+        const deltaY = event.clientY - state.previousY;
+        state.moved ||= Math.abs(deltaX) + Math.abs(deltaY) > 3;
+        state.velocityY = deltaX * 0.006;
+        state.velocityX = deltaY * 0.004;
+        globeGroup.rotation.y += state.velocityY;
+        globeGroup.rotation.x = THREE.MathUtils.clamp(globeGroup.rotation.x + state.velocityX, -0.9, 0.9);
+        state.previousX = event.clientX;
+        state.previousY = event.clientY;
+        return;
+      }
+      setHovered(hitMarker());
+      const bounds = container.getBoundingClientRect();
+      setHoverPosition({ x: event.clientX - bounds.left, y: event.clientY - bounds.top });
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      state.dragging = false;
+      renderer.domElement.releasePointerCapture(event.pointerId);
+      if (!state.moved) {
+        const marker = hitMarker();
+        if (marker) {
+          setSelected(marker);
+          onSelectRef.current?.(marker);
+          const position = toPosition(marker.lat, marker.lon, 1);
+          state.target = new THREE.Vector2(-Math.asin(position.y), Math.atan2(position.x, position.z));
         }
       }
+    };
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      camera.position.z = THREE.MathUtils.clamp(camera.position.z + event.deltaY * 0.0015, 1.85, 4.6);
+    };
+    const onPointerLeave = () => setHovered(null);
+    renderer.domElement.addEventListener("pointerdown", onPointerDown);
+    renderer.domElement.addEventListener("pointermove", onPointerMove);
+    renderer.domElement.addEventListener("pointerup", onPointerUp);
+    renderer.domElement.addEventListener("pointerleave", onPointerLeave);
+    renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("resize", resize);
+    resize();
 
+    let animationFrame = 0;
+    const animate = () => {
+      animationFrame = requestAnimationFrame(animate);
+      if (!state.dragging) {
+        clouds.rotation.y += 0.00008;
+        globeGroup.rotation.y += state.velocityY;
+        globeGroup.rotation.x = THREE.MathUtils.clamp(globeGroup.rotation.x + state.velocityX, -0.9, 0.9);
+        state.velocityX *= 0.94;
+        state.velocityY = state.velocityY * 0.94 + 0.00016;
+        if (state.target) {
+          globeGroup.rotation.x = THREE.MathUtils.lerp(globeGroup.rotation.x, state.target.x, 0.06);
+          globeGroup.rotation.y = THREE.MathUtils.lerp(globeGroup.rotation.y, state.target.y, 0.06);
+          if (Math.abs(globeGroup.rotation.y - state.target.y) < 0.002) state.target = null;
+        }
+      }
+      markerGroup.visible = showMarkers;
+      northIce.visible = showIce;
+      southIce.visible = showIce;
+      sunLight.intensity = dayLight ? 2.1 : 0.58;
       renderer.render(scene, camera);
     };
-
     animate();
-
-    // Cleanup
     return () => {
-      window.removeEventListener("resize", handleResize);
-      renderer.domElement.removeEventListener("mousedown", onMouseDown);
-      renderer.domElement.removeEventListener("mousemove", onMouseMove);
-      renderer.domElement.removeEventListener("mouseup", onMouseUp);
-      renderer.domElement.removeEventListener("click", onClick);
+      cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", resize);
+      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+      renderer.domElement.removeEventListener("pointermove", onPointerMove);
+      renderer.domElement.removeEventListener("pointerup", onPointerUp);
+      renderer.domElement.removeEventListener("pointerleave", onPointerLeave);
       renderer.domElement.removeEventListener("wheel", onWheel);
-
-      if (containerRef.current?.contains(renderer.domElement)) {
-        containerRef.current.removeChild(renderer.domElement);
-      }
-
-      geometry.dispose();
-      atmosphereGeometry.dispose();
-      starsGeometry.dispose();
-      material.dispose();
-      atmosphereMaterial.dispose();
-      starsMaterial.dispose();
-      texture.dispose();
+      earthGeometry.dispose();
+      earthMaterial.dispose();
+      fallbackTexture.dispose();
       earthTexture.dispose();
+      surfaceNormal.dispose();
+      surfaceSpecular.dispose();
+      cloudMaterial.map?.dispose();
+      cloudMaterial.dispose();
+      clouds.geometry.dispose();
+      atmosphere.geometry.dispose();
+      (atmosphere.material as THREE.Material).dispose();
+      northIce.geometry.dispose();
+      southIce.geometry.dispose();
+      iceMaterial.dispose();
+      markerGroup.children.forEach((marker) => {
+        marker.geometry.dispose();
+        (marker.material as THREE.Material).dispose();
+      });
+      starsGeometry.dispose();
+      starsMaterial.dispose();
       renderer.dispose();
+      if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
-  }, []);
+  }, [dayLight, resetView, showIce, showMarkers]);
 
+  const linkedResearch = selected ? researchItems.filter((item) => item.expeditionId === selected.id) : [];
+  const hoveredResearch = hovered ? researchItems.find((item) => item.expeditionId === hovered.id) : undefined;
+  const activeCount = markers.filter((marker) => marker.status === "Active").length;
   return (
-    <div className={className}>
-      <div
-        ref={containerRef}
-        className="relative h-full w-full rounded-lg overflow-hidden"
-        style={{ userSelect: "none" }}
-      />
-      {hoveredLocation && (
-        <div className="absolute bottom-4 left-4 rounded-lg bg-black/60 px-3 py-2 text-xs font-semibold text-cyan-400 backdrop-blur-sm border border-cyan-400/30">
-          {hoveredLocation}
+    <div className={cn("relative overflow-hidden rounded-2xl bg-[#06121f]", className)}>
+      <div ref={containerRef} className="h-full min-h-[300px] w-full touch-none" />
+      <div className="absolute left-3 top-3 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-[#071827]/80 p-2 text-[10px] text-slate-200 backdrop-blur-md">
+        <button onClick={() => setDayLight((value) => !value)} className={cn("flex items-center gap-1.5 rounded-lg px-2 py-1.5", dayLight ? "bg-amber-400/20 text-amber-200" : "bg-slate-700/70 text-slate-400")} title="Toggle day lighting"><Sun size={13} /> Day light</button>
+        <button onClick={() => setShowMarkers((value) => !value)} className={cn("flex items-center gap-1.5 rounded-lg px-2 py-1.5", showMarkers ? "bg-emerald-400/20 text-emerald-200" : "bg-slate-700/70 text-slate-400")} title="Toggle research markers"><MapPin size={13} /> Research activity</button>
+        <button onClick={() => setShowIce((value) => !value)} className={cn("flex items-center gap-1.5 rounded-lg px-2 py-1.5", showIce ? "bg-cyan-400/20 text-cyan-200" : "bg-slate-700/70 text-slate-400")} title="Toggle polar ice caps"><Snowflake size={13} /> Polar ice</button>
+      </div>
+      <button onClick={() => setResetView((value) => value + 1)} className="absolute right-3 top-3 rounded-lg border border-white/10 bg-[#071827]/80 p-2 text-slate-300 backdrop-blur-md hover:text-white" title="Reset globe view" aria-label="Reset globe view"><RotateCcw size={14} /></button>
+      <div className="absolute bottom-3 left-3 rounded-xl border border-white/10 bg-[#071827]/85 px-3 py-2 text-[10px] text-slate-300 backdrop-blur-md"><p className="font-mono uppercase tracking-wider text-cyan-200">Earth observation view</p><p className="mt-1">{markers.length} missions · {activeCount} active · scroll to zoom</p></div>
+      {hovered && !selected && <div className="pointer-events-none absolute z-20 w-[220px] overflow-hidden rounded-lg border border-cyan-300/40 bg-[#071827]/95 text-[11px] text-white shadow-xl" style={{ left: Math.min(hoverPosition.x + 12, 16 + Math.max(0, (containerRef.current?.clientWidth ?? 240) - 236)), top: Math.min(hoverPosition.y + 12, Math.max(12, (containerRef.current?.clientHeight ?? 300) - 150)) }}>
+        {(hovered.imageUrl ?? hoveredResearch?.imageUrl) && <img src={hovered.imageUrl ?? hoveredResearch?.imageUrl} alt={hovered.location} className="h-20 w-full object-cover" />}
+        <div className="p-3">
+          <p className="font-semibold text-cyan-200">{hovered.location}</p>
+          <p className="mt-0.5 text-slate-300">{hovered.category} · {hovered.status}</p>
+          <p className="mt-2 line-clamp-3 leading-relaxed text-slate-300">{hovered.objective ?? hovered.description ?? "Polar science field activity"}</p>
+          {hoveredResearch && <p className="mt-2 truncate border-t border-white/10 pt-2 text-cyan-100">Research: {hoveredResearch.title}</p>}
         </div>
-      )}
+      </div>}
+      {selected && <div className="absolute bottom-3 right-3 z-20 w-[min(290px,calc(100%-1.5rem))] rounded-xl border border-cyan-300/30 bg-[#071827]/95 p-4 text-white shadow-2xl backdrop-blur-md"><button onClick={() => setSelected(null)} className="absolute right-2 top-2 text-slate-400 hover:text-white" aria-label="Close location details"><X size={14} /></button><p className="font-mono text-[10px] uppercase tracking-wider text-cyan-200">{selected.region} · {selected.category}</p><h3 className="mt-1 pr-5 text-sm font-semibold">{selected.location}</h3><p className="mt-1 text-[11px] text-slate-300">{selected.name}</p><p className="mt-3 text-[11px] leading-relaxed text-slate-300">{selected.objective ?? selected.description}</p><div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/10 pt-3 text-[10px]"><span className="text-slate-400">Lead researcher<br /><strong className="text-slate-200">{selected.lead ?? "Not listed"}</strong></span><span className="text-slate-400">Status<br /><strong className="text-emerald-300">{selected.status}</strong></span></div>{linkedResearch.length > 0 && <p className="mt-3 border-t border-white/10 pt-2 text-[10px] text-cyan-200">{linkedResearch.length} linked research paper{linkedResearch.length > 1 ? "s" : ""}</p>}</div>}
     </div>
   );
 }

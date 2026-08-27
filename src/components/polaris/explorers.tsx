@@ -5,7 +5,8 @@ import { expeditions } from "@/lib/data/expeditions";
 import { useApp } from "@/lib/store";
 import { ExpeditionCard, ResearchCard, ResearchDetailModal } from "./cards";
 import { EmptyState } from "./core";
-import { ExpeditionPanel, PolarMap } from "./map";
+import { ExpeditionPanel } from "./map";
+import { InteractiveGlobe } from "./interactive-globe";
 import { cn } from "@/lib/utils";
 
 const selectCls =
@@ -199,7 +200,7 @@ export function ExpeditionsExplorer() {
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-12">
         <div className="lg:col-span-8">
-          <PolarMap expeditions={filtered} onSelect={selectExpedition} selected={selected} />
+          <InteractiveGlobe className="h-[520px] w-full" onSelect={selectExpedition} />
         </div>
         <div className="lg:col-span-4">
           {selected ? (

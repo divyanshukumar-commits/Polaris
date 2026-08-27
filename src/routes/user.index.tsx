@@ -30,6 +30,7 @@ import { mediaAssets } from "@/lib/data/media";
 import { newsItems } from "@/lib/data/news";
 import type { MediaAsset, NewsItem, ResearchItem } from "@/lib/data/types";
 import { useState } from "react";
+import { InteractiveGlobe } from "@/components/polaris/interactive-globe";
 
 export const Route = createFileRoute("/user/")({
   head: () => ({
@@ -108,6 +109,11 @@ function UserDashboard() {
         <StatCard icon={<Rocket size={16} />} label="Expeditions" value={85} suffix="+" />
         <StatCard icon={<ImageIcon size={16} />} label="Media Assets" value={3400} suffix="+" />
       </div>
+
+      <section className="mt-10">
+        <SectionTitle title="Live Polar Earth Observatory" action={<span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Expeditions & research activity</span>} />
+        <InteractiveGlobe className="h-[460px] w-full" />
+      </section>
 
       {/* polar regions */}
       <div className="mt-10">

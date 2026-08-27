@@ -24,6 +24,7 @@ import { useApp } from "@/lib/store";
 import { ResearchDetailModal } from "@/components/polaris/cards";
 import type { ResearchItem } from "@/lib/data/types";
 import { toast } from "sonner";
+import { InteractiveGlobe } from "@/components/polaris/interactive-globe";
 
 export const Route = createFileRoute("/researcher/")({
   head: () => ({
@@ -87,6 +88,11 @@ function ResearcherDashboard() {
         <StatCard icon={<TrendingUp size={16} />} label="Total Repository Views" value={totalViews} suffix="+" />
         <StatCard icon={<Compass size={16} />} label="Field Expeditions" value={4} />
       </div>
+
+      <section>
+        <SectionTitle title="Earth Observation Operations" action={<span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Field missions & research locations</span>} />
+        <InteractiveGlobe className="h-[460px] w-full" />
+      </section>
 
       {/* Quick Action Grid */}
       <div>

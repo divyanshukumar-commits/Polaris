@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   Check,
@@ -104,9 +103,8 @@ function FallingSnow() {
 function LoginPage() {
   const navigate = useNavigate();
   const roleFromUrl = new URLSearchParams(window.location.search).get("role");
-  const lockedRole: AuthRole | null = roleFromUrl === "user" || roleFromUrl === "researcher" || roleFromUrl === "admin" ? roleFromUrl : null;
   const [role, setRole] = useState<AuthRole>(() => {
-    const requested = new URLSearchParams(window.location.search).get("role");
+    const requested = roleFromUrl;
     return requested === "researcher" || requested === "admin" ? requested : "user";
   });
   const [isSignUp, setIsSignUp] = useState(false);
@@ -114,18 +112,8 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(true);
-  const [isFreezing, setIsFreezing] = useState(false);
 
   const currentRole = ROLE_DATA[role];
-
-  const handleRoleSwitch = (newRole: AuthRole) => {
-    if (newRole === role || (lockedRole && !isSignUp)) return;
-    setIsFreezing(true);
-    setRole(newRole);
-    setEmail(ROLE_DATA[newRole].defaultEmail);
-    setPassword("");
-    setTimeout(() => setIsFreezing(false), 600);
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,23 +163,6 @@ function LoginPage() {
       <div className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl md:grid-cols-12 min-h-[580px] border border-cyan-500/30">
         {/* LEFT SIDE: Clean Auth Form matching User's Mockup */}
         <div className="relative p-8 md:p-12 md:col-span-6 flex flex-col justify-between bg-white text-slate-800">
-          {/* Animated Frost Freeze Flash */}
-          <AnimatePresence>
-            {isFreezing && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="pointer-events-none absolute inset-0 z-30 bg-gradient-to-b from-cyan-300/30 via-blue-200/20 to-cyan-100/40 backdrop-blur-[2px] flex items-center justify-center"
-              >
-                <FallingSnow />
-                <div className="rounded-full bg-white/90 border border-cyan-400 px-4 py-1.5 shadow-lg text-xs font-bold text-cyan-800 flex items-center gap-2">
-                  <span className="animate-spin">❄️</span> Freezing & Switching to {currentRole.title}…
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           <div>
             {/* Header / Title */}
             <div className="flex items-center justify-between mb-6">
@@ -337,47 +308,6 @@ function LoginPage() {
             </form>
           </div>
 
-          {/* BOTTOM ROLE SWITCHER WITH FREEZE/SNOW EFFECTS (From User's Drawing) */}
-          <div className="mt-8 pt-5 border-t border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-mono text-[10px] uppercase font-bold text-slate-500">
-                {lockedRole && !isSignUp ? "Dedicated portal login" : "Selected signup role"}: <span className="text-[#139ba5] uppercase">{role}</span>
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">{lockedRole && !isSignUp ? "Role is locked to this portal" : "Choose a role before creating your account"}</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              {/* Admin Button */}
-              <button
-                type="button"
-                onClick={() => handleRoleSwitch("admin")}
-                className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-full py-2 px-3 text-xs font-bold transition-all border",
-                  role === "admin"
-                    ? "bg-[#0e2a47] text-white border-[#0e2a47] shadow-md ring-2 ring-slate-300"
-                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100",
-                )}
-              >
-                <ShieldCheck size={13} />
-                <span>ADMIN</span>
-              </button>
-
-              {/* Researcher Button */}
-              <button
-                type="button"
-                onClick={() => handleRoleSwitch("researcher")}
-                className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-full py-2 px-3 text-xs font-bold transition-all border",
-                  role === "researcher"
-                    ? "bg-[#0284c7] text-white border-[#0284c7] shadow-md ring-2 ring-blue-200"
-                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100",
-                )}
-              >
-                <FlaskConical size={13} />
-                <span>RESEARCHER</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* RIGHT SIDE: Glacier field visual inspired by the reference layout */}

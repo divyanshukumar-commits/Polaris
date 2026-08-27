@@ -23,6 +23,7 @@ import { useApp } from "@/lib/store";
 import { ResearchDetailModal } from "@/components/polaris/cards";
 import type { ResearchItem } from "@/lib/data/types";
 import { toast } from "sonner";
+import { InteractiveGlobe } from "@/components/polaris/interactive-globe";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -100,6 +101,11 @@ function AdminDashboard() {
         <StatCard icon={<Users size={16} />} label="Active Accounts" value={activeUsersCount} />
         <StatCard icon={<Server size={16} />} label="System Health" value={100} suffix="%" />
       </div>
+
+      <section>
+        <SectionTitle title="Global Research Activity" action={<span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Platform field coverage</span>} />
+        <InteractiveGlobe className="h-[460px] w-full" />
+      </section>
 
       {/* Pending Moderation Queue */}
       <div>

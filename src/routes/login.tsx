@@ -21,7 +21,7 @@ import {
 import { Logo } from "@/components/polaris/core";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { saveAuthSession } from "@/lib/auth";
+import { authenticateAccount, getAuthSession, registerAccount, type Role } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -40,7 +40,7 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-type AuthRole = "user" | "researcher" | "admin";
+type AuthRole = Role;
 
 const ROLE_DATA: Record<
   AuthRole,
@@ -103,9 +103,14 @@ function FallingSnow() {
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [role, setRole] = useState<AuthRole>("user");
+  const roleFromUrl = new URLSearchParams(window.location.search).get("role");
+  const lockedRole: AuthRole | null = roleFromUrl === "user" || roleFromUrl === "researcher" || roleFromUrl === "admin" ? roleFromUrl : null;
+  const [role, setRole] = useState<AuthRole>(() => {
+    const requested = new URLSearchParams(window.location.search).get("role");
+    return requested === "researcher" || requested === "admin" ? requested : "user";
+  });
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState(ROLE_DATA.user.defaultEmail);
+  const [email, setEmail] = useState(() => ROLE_DATA[lockedRole ?? "user"].defaultEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(true);
@@ -114,7 +119,7 @@ function LoginPage() {
   const currentRole = ROLE_DATA[role];
 
   const handleRoleSwitch = (newRole: AuthRole) => {
-    if (newRole === role) return;
+    if (newRole === role || (lockedRole && !isSignUp)) return;
     setIsFreezing(true);
     setRole(newRole);
     setEmail(ROLE_DATA[newRole].defaultEmail);
@@ -132,7 +137,20 @@ function LoginPage() {
       toast.error("Please agree to the terms of service.");
       return;
     }
-    saveAuthSession(role, email.trim().toLowerCase());
+    if (isSignUp) {
+      registerAccount(email, password, role);
+    } else {
+      const existingSession = getAuthSession();
+      const authenticatedRole = authenticateAccount(email, password, role);
+      if (!authenticatedRole && !existingSession) {
+        toast.error("Account not found", { description: "Sign up first or check your credentials." });
+        return;
+      }
+      if (!authenticatedRole) {
+        toast.error("Please sign in with the account email and password you registered.");
+        return;
+      }
+    }
     toast.success(`Welcome to POLARIS (${currentRole.title})`, {
       description: `Authenticated into ${role.toUpperCase()} workspace.`,
     });
@@ -205,6 +223,32 @@ function LoginPage() {
             </div>
 
             {/* Form matching the Cyan Pill Mockup */}
+            {isSignUp && (
+              <fieldset className="space-y-2">
+                <legend className="text-xs font-bold uppercase tracking-wider text-slate-500">Choose your role</legend>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {(Object.keys(ROLE_DATA) as AuthRole[]).map((candidate) => {
+                    const data = ROLE_DATA[candidate];
+                    const Icon = data.icon;
+                    return (
+                      <button
+                        key={candidate}
+                        type="button"
+                        onClick={() => setRole(candidate)}
+                        className={cn(
+                          "rounded-xl border p-3 text-left transition-all",
+                          role === candidate ? "border-[#18c2ce] bg-[#c7f2f4]" : "border-slate-200 bg-slate-50 hover:border-[#18c2ce]",
+                        )}
+                      >
+                        <span className="flex items-center gap-1.5 text-xs font-bold text-[#0e2a47]"><Icon size={14} /> {data.title}</span>
+                        <span className="mt-1 block text-[10px] leading-tight text-slate-500">{data.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* E-mail Input */}
               <div className="relative">
@@ -297,9 +341,9 @@ function LoginPage() {
           <div className="mt-8 pt-5 border-t border-slate-200">
             <div className="flex items-center justify-between mb-2">
               <span className="font-mono text-[10px] uppercase font-bold text-slate-500">
-                Current Role: <span className="text-[#139ba5] uppercase">{role}</span>
+                {lockedRole && !isSignUp ? "Dedicated portal login" : "Selected signup role"}: <span className="text-[#139ba5] uppercase">{role}</span>
               </span>
-              <span className="text-[10px] text-slate-400 font-mono">USER opens by default · Click to freeze & switch</span>
+              <span className="text-[10px] text-slate-400 font-mono">{lockedRole && !isSignUp ? "Role is locked to this portal" : "Choose a role before creating your account"}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2">

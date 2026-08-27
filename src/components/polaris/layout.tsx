@@ -7,9 +7,8 @@ import {
 import { Logo } from "./core";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { clearAuthSession, getAuthSession } from "@/lib/auth";
+import { clearAuthSession, getAuthSession, type Role } from "@/lib/auth";
 
-export type Role = "user" | "researcher" | "admin";
 
 interface NavItem {
   to: string;

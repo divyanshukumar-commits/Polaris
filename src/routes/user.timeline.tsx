@@ -40,6 +40,7 @@ function TimelinePage() {
   const [filterIndianOnly, setFilterIndianOnly] = useState(false);
 
   const currentPeriod = timelinePeriods[activeIdx];
+  const timelinePosition = timelinePeriods.length > 1 ? (activeIdx / (timelinePeriods.length - 1)) * 100 : 0;
 
   const indianMilestones = [
     { year: 1981, title: "1st Indian Antarctic Expedition", desc: "Led by Dr. S. Z. Qasim on MV Polar Circle." },
@@ -107,19 +108,29 @@ function TimelinePage() {
 
         {/* The Track Bar with Markers & Pointer */}
         <div className="relative pt-6 pb-4">
+          <input
+            type="range"
+            min={0}
+            max={timelinePeriods.length - 1}
+            step={1}
+            value={activeIdx}
+            onChange={(event) => setActiveIdx(Number(event.target.value))}
+            aria-label="Select timeline period"
+            className="absolute inset-x-0 top-5 z-10 h-6 w-full cursor-grab opacity-0 active:cursor-grabbing"
+          />
           {/* Base Background Track Line */}
           <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
             <motion.div
               className="h-full bg-gradient-to-r from-cyan-500 via-primary to-chart-2"
               initial={false}
-              animate={{ width: `${((activeIdx + 1) / timelinePeriods.length) * 100}%` }}
+              animate={{ width: `${timelinePosition}%` }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             />
           </div>
           <motion.div
             className="pointer-events-none absolute top-0 -translate-x-1/2 text-primary"
             initial={false}
-            animate={{ left: `${((activeIdx + 0.5) / timelinePeriods.length) * 100}%` }}
+            animate={{ left: `${timelinePosition}%` }}
             transition={{ type: "spring", stiffness: 220, damping: 24 }}
             aria-hidden="true"
           >

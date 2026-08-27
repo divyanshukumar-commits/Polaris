@@ -4,9 +4,10 @@ import {
   ArrowRight, Compass, FlaskConical, Globe2, Landmark, Library,
   MessageSquareText, Rocket, Satellite, ShieldCheck, Sparkles, Telescope, User,
 } from "lucide-react";
-import { AnimatedNumber, Logo, WaterSurface } from "@/components/polaris/core";
+import { AnimatedNumber, Logo } from "@/components/polaris/core";
+import { InteractiveGlobe } from "@/components/polaris/interactive-globe";
 import { timelinePeriods } from "@/lib/data/timeline";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
@@ -33,91 +34,32 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-/* Animated polar earth / orbital visual */
+/* Interactive 3D Earth visualization */
 function PolarOrb() {
   return (
     <div className="relative mx-auto aspect-square w-full max-w-md">
-      <div className="absolute inset-0 rounded-full bg-primary/10 blur-3xl" />
-      {/* orbit rings */}
-      <div className="absolute inset-0 animate-orbit rounded-full border border-dashed border-primary/25">
-        <span className="absolute -top-1.5 left-1/2 flex h-3 w-3 -translate-x-1/2 items-center justify-center">
-          <Satellite size={14} className="text-primary" />
-        </span>
-      </div>
-      <div
-        className="absolute inset-6 animate-orbit rounded-full border border-primary/15"
-        style={{ animationDirection: "reverse", animationDuration: "26s" }}
-      >
-        <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-chart-2 glow-primary" />
-      </div>
-      {/* globe */}
-      <svg viewBox="0 0 200 200" className="absolute inset-12 h-auto w-[calc(100%-6rem)]">
-        <defs>
-          <radialGradient id="globe" cx="0.35" cy="0.3" r="1">
-            <stop offset="0%" stopColor="oklch(0.45 0.1 220)" />
-            <stop offset="70%" stopColor="oklch(0.2 0.06 245)" />
-            <stop offset="100%" stopColor="oklch(0.13 0.04 255)" />
-          </radialGradient>
-          <clipPath id="globe-clip">
-            <circle cx="100" cy="100" r="87" />
-          </clipPath>
-        </defs>
-        <circle cx="100" cy="100" r="88" fill="url(#globe)" stroke="oklch(0.7 0.15 200)" strokeOpacity="0.35" />
-        <g clipPath="url(#globe-clip)" className="animate-globe-spin" fill="oklch(0.36 0.12 155)" opacity="0.9">
-          {/* Simplified public-domain continent silhouettes for a recognizable Earth profile. */}
-          <path d="M30 53 39 39 54 32 69 37 73 47 63 53 59 63 49 61 42 69 33 63Z" />
-          <path d="M67 72 78 78 81 94 75 110 70 125 63 137 58 126 62 111 59 98Z" />
-          <path d="M91 43 108 35 130 38 143 47 157 51 165 62 154 68 139 65 129 73 116 68 106 75 97 64Z" />
-          <path d="M111 72 128 70 137 81 132 96 124 105 118 119 109 112 105 96Z" />
-          <path d="M145 121 160 122 170 132 164 143 148 140 139 132Z" />
-          <path d="M83 140 101 143 117 151 130 163 117 171 99 166 88 155Z" />
-        </g>
-        {/* graticule */}
-        {[30, 55, 100, 145, 170].map((r) => (
-          <ellipse key={r} cx="100" cy="100" rx="88" ry={88 * Math.abs(Math.cos((r * Math.PI) / 180))} fill="none" stroke="oklch(0.75 0.12 200)" strokeOpacity="0.18" />
-        ))}
-        <ellipse cx="100" cy="100" rx="40" ry="88" fill="none" stroke="oklch(0.75 0.12 200)" strokeOpacity="0.18" />
-        <ellipse cx="100" cy="100" rx="70" ry="88" fill="none" stroke="oklch(0.75 0.12 200)" strokeOpacity="0.14" />
-        <line x1="100" y1="12" x2="100" y2="188" stroke="oklch(0.75 0.12 200)" strokeOpacity="0.18" />
-        {/* polar ice caps */}
-        <path d="M40 55 Q70 15 100 16 Q140 15 165 50 Q140 38 100 40 Q65 40 40 55 Z" fill="oklch(0.93 0.03 220)" opacity="0.92" />
-        <path d="M45 150 Q75 185 105 184 Q140 183 160 152 Q130 165 100 163 Q70 163 45 150 Z" fill="oklch(0.93 0.03 220)" opacity="0.92" />
-        {/* aurora shimmer */}
-        <path d="M20 90 Q60 70 100 88 T185 82" fill="none" stroke="oklch(0.8 0.16 170)" strokeWidth="3" strokeOpacity="0.5" className="animate-aurora" />
-      </svg>
-      {/* floating particles */}
-      {[...Array(7)].map((_, i) => (
-        <span
-          key={i}
-          className="animate-twinkle absolute h-1 w-1 rounded-full bg-primary"
-          style={{
-            left: `${12 + i * 12}%`,
-            top: `${8 + ((i * 29) % 70)}%`,
-            animationDelay: `${i * 0.6}s`,
-          }}
-        />
-      ))}
+      <InteractiveGlobe className="h-full w-full" />
     </div>
   );
 }
 
 const roles = [
   {
-    to: "/user",
+    to: "/login?role=user",
     icon: <User size={22} />,
     title: "User",
     tagline: "Explore polar science",
     desc: "Discover research, expeditions, media galleries and the Polar Assistant.",
   },
   {
-    to: "/researcher",
+    to: "/login?role=researcher",
     icon: <FlaskConical size={22} />,
     title: "Researcher",
     tagline: "Discover and contribute research",
     desc: "Submit publications, track review status, manage expeditions and analyse engagement.",
   },
   {
-    to: "/admin",
+    to: "/login?role=admin",
     icon: <ShieldCheck size={22} />,
     title: "Admin",
     tagline: "Manage the ecosystem",
@@ -156,7 +98,7 @@ function Landing() {
         <Logo />
         <div className="flex items-center gap-2">
           <Link
-            to="/user"
+            to="/login?role=user"
             className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90"
           >
             Launch Portal
@@ -206,7 +148,7 @@ function Landing() {
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
-              to="/user"
+              to="/login?role=user"
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition-all hover:opacity-90 glow-primary"
             >
               Explore Polar Science <ArrowRight size={16} />

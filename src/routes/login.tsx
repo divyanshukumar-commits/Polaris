@@ -108,7 +108,9 @@ function LoginPage() {
     return requested === "researcher" || requested === "admin" ? requested : "user";
   });
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState(() => ROLE_DATA[lockedRole ?? "user"].defaultEmail);
+  const [email, setEmail] = useState(() =>
+    ROLE_DATA[roleFromUrl === "researcher" || roleFromUrl === "admin" ? roleFromUrl : "user"].defaultEmail,
+  );
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(true);

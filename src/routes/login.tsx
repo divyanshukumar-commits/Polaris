@@ -20,7 +20,7 @@ import {
 import { Logo } from "@/components/polaris/core";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { authenticateAccount, getAuthSession, registerAccount, type Role } from "@/lib/auth";
+import { authenticateAccount, registerAccount, type Role } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -114,8 +114,7 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(true);
-
-  const currentRole = ROLE_DATA[role];
+  const [signupComplete, setSignupComplete] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,22 +128,26 @@ function LoginPage() {
     }
     if (isSignUp) {
       registerAccount(email, password, role);
+      setIsSignUp(false);
+      setPassword("");
+      setSignupComplete(true);
+      toast.success("Signed up successfully", {
+        description: "Your account was created. Sign in to continue.",
+      });
+      return;
     } else {
-      const existingSession = getAuthSession();
-      const authenticatedRole = authenticateAccount(email, password, role);
-      if (!authenticatedRole && !existingSession) {
+      const authenticatedRole = authenticateAccount(email, password);
+      if (!authenticatedRole) {
         toast.error("Account not found", { description: "Sign up first or check your credentials." });
         return;
       }
-      if (!authenticatedRole) {
-        toast.error("Please sign in with the account email and password you registered.");
-        return;
-      }
+      const authenticatedRoleData = ROLE_DATA[authenticatedRole];
+      toast.success(`Welcome to POLARIS (${authenticatedRoleData.title})`, {
+        description: `Authenticated into ${authenticatedRole.toUpperCase()} workspace.`,
+      });
+      navigate({ to: authenticatedRoleData.targetRoute as any });
+      return;
     }
-    toast.success(`Welcome to POLARIS (${currentRole.title})`, {
-      description: `Authenticated into ${role.toUpperCase()} workspace.`,
-    });
-    navigate({ to: currentRole.targetRoute as any });
   };
 
   return (
@@ -223,6 +226,12 @@ function LoginPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {signupComplete && !isSignUp && (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">
+                  <p className="font-bold">Account Created Successfully</p>
+                  <p className="mt-1 text-xs">Your Polaris account has been created. Please sign in to continue.</p>
+                </div>
+              )}
               {/* E-mail Input */}
               <div className="relative">
                 <div className="flex items-center rounded-full bg-[#c7f2f4] px-4 py-3 text-slate-800 shadow-inner">
@@ -316,10 +325,11 @@ function LoginPage() {
         <div className="hidden md:block md:col-span-6 relative overflow-hidden">
           {/* A separate polar image keeps the reference composition while fitting POLARIS. */}
           <img
-            src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=85"
-            alt="Clear turquoise water viewed from above"
+            src="https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?auto=format&fit=crop&w=1200&q=85"
+            alt="Glacier and snow-covered polar landscape"
             className="absolute inset-0 h-full w-full object-cover"
           />
+          <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent_12%,rgba(70,255,193,0.12)_42%,rgba(80,190,255,0.2)_58%,transparent_88%)] mix-blend-screen animate-aurora" aria-hidden="true" />
 
           {/* Jagged Iceberg White Border Overlay dividing Left and Right */}
           <svg

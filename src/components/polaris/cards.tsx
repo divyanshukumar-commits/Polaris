@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bookmark, BookmarkCheck, Calendar, ExternalLink, MapPin, Play, Share2, Users, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, Calendar, Download, ExternalLink, MapPin, Play, Share2, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import type { Expedition, MediaAsset, ResearchItem } from "@/lib/data/types";
 import { expeditionById } from "@/lib/data/expeditions";
@@ -7,6 +7,7 @@ import { mediaAssets } from "@/lib/data/media";
 import { useApp } from "@/lib/store";
 import { RegionTag, SectionTitle, StatusBadge } from "./core";
 import { cn } from "@/lib/utils";
+import { downloadResearchItem } from "@/lib/download";
 
 /* ---------- Procedural polar visual (no external images) ---------- */
 export function MediaVisual({
@@ -129,12 +130,27 @@ export function ResearchCard({ item, onOpen }: { item: ResearchItem; onOpen: (r:
       </div>
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
         <span className="font-mono text-[10px] text-muted-foreground">{item.views.toLocaleString()} views</span>
-        <button
-          onClick={() => onOpen(item)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/25 px-3 py-1.5 text-xs font-semibold text-primary transition-all hover:bg-primary hover:text-primary-foreground"
-        >
-          View Details <ExternalLink size={12} />
-        </button>
+        <div className="flex items-center gap-2">
+          {item.downloadUrl && (
+            <button
+              onClick={() => {
+                downloadResearchItem(item);
+                toast.success("Research download started");
+              }}
+              aria-label={`Download ${item.title}`}
+              title="Download research paper"
+              className="rounded-lg border border-border bg-secondary p-2 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            >
+              <Download size={14} />
+            </button>
+          )}
+          <button
+            onClick={() => onOpen(item)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/25 px-3 py-1.5 text-xs font-semibold text-primary transition-all hover:bg-primary hover:text-primary-foreground"
+          >
+            View Details <ExternalLink size={12} />
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -229,6 +245,17 @@ export function ResearchDetailModal({
           >
             Read Research
           </button>
+          {item.downloadUrl && (
+            <button
+              onClick={() => {
+                downloadResearchItem(item);
+                toast.success("Research download started");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+            >
+              <Download size={13} /> Download Research Paper
+            </button>
+          )}
           <button
             onClick={() => {
               const added = toggleSaved(item.id);

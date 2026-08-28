@@ -34,6 +34,7 @@ export interface ResearchItem {
   dateAdded?: string;
   expeditionId?: string;
   doi?: string;
+  downloadUrl?: string;
   imageUrl?: string;
   videoUrl?: string;
 }

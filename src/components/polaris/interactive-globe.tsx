@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { mesh as topoMesh } from "topojson-client";
+import type { Topology } from "topojson-specification";
 import { MapPin, RotateCcw, Snowflake, Sun, X } from "lucide-react";
 import { expeditions } from "@/lib/data/expeditions";
 import { researchItems } from "@/lib/data/research";
@@ -99,6 +101,29 @@ export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps)
       earthMaterial.specularMap = texture;
       earthMaterial.needsUpdate = true;
     });
+
+    const countryBorders = new THREE.Group();
+    const borderMaterial = new THREE.LineBasicMaterial({
+      color: 0xd9f7ff,
+      transparent: true,
+      opacity: 0.7,
+      depthWrite: false,
+    });
+    countryBorders.renderOrder = 2;
+    globeGroup.add(countryBorders);
+    let bordersDisposed = false;
+    void fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((topology: Topology | null) => {
+        if (!topology || bordersDisposed) return;
+        const borders = topoMesh(topology, topology.objects.countries);
+        borders.coordinates.forEach((segment) => {
+          const points = segment.map(([lon, lat]) => new THREE.Vector3(...latLonToVec3(lat, lon)).multiplyScalar(1.008));
+          const geometry = new THREE.BufferGeometry().setFromPoints(points);
+          countryBorders.add(new THREE.Line(geometry, borderMaterial));
+        });
+      })
+      .catch(() => undefined);
 
     const cloudMaterial = new THREE.MeshPhongMaterial({
       map: new THREE.TextureLoader().load("https://threejs.org/examples/textures/planets/earth_clouds_1024.png"),
@@ -243,6 +268,7 @@ export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps)
     };
     animate();
     return () => {
+      bordersDisposed = true;
       cancelAnimationFrame(animationFrame);
       window.removeEventListener("resize", resize);
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
@@ -256,6 +282,8 @@ export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps)
       earthTexture.dispose();
       surfaceNormal.dispose();
       surfaceSpecular.dispose();
+      countryBorders.children.forEach((border) => border.geometry.dispose());
+      borderMaterial.dispose();
       cloudMaterial.map?.dispose();
       cloudMaterial.dispose();
       clouds.geometry.dispose();

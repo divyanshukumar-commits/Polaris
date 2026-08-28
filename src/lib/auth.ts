@@ -34,17 +34,16 @@ export function registerAccount(email: string, password: string, role: Role) {
   const accounts = readAccounts().filter((account) => account.email !== normalizedEmail);
   accounts.push({ email: normalizedEmail, password, role });
   window.localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-  saveAuthSession(role, normalizedEmail);
 }
 
-export function authenticateAccount(email: string, password: string, requestedRole?: Role) {
+export function authenticateAccount(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
   const account = readAccounts().find(
     (candidate) => candidate.email === normalizedEmail && candidate.password === password,
   ) ?? (password.length >= 6 && legacyRoles[normalizedEmail]
     ? { email: normalizedEmail, password, role: legacyRoles[normalizedEmail] }
     : undefined);
-  if (!account || (requestedRole && account.role !== requestedRole)) return null;
+  if (!account) return null;
   saveAuthSession(account.role, account.email);
   return account.role;
 }

@@ -19,7 +19,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
 }
 
 type CursorPoint = { x: number; y: number; id: number };
-type CursorEffect = CursorPoint & { kind: "wave" | "drop" | "scan" };
+type CursorEffect = CursorPoint & { kind: "wave" | "drop" | "scan" | "snow" };
 
 export function WaterSurface({ children, className }: { children: ReactNode; className?: string }) {
   const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number }>>([]);
@@ -102,9 +102,10 @@ export function PolarCursor() {
       target.x = point.x;
       target.y = point.y;
       const distance = Math.hypot(point.x - lastWave.x, point.y - lastWave.y);
-      if (distance > 42) {
+      if (distance > 34) {
         lastWave = point;
-        addEffect({ ...point, kind: "wave" });
+        addEffect({ ...point, kind: "snow" }, 520);
+        if (distance > 58) addEffect({ ...point, kind: "wave" });
       }
     };
     const pointerOver = (event: PointerEvent) => {
@@ -122,7 +123,12 @@ export function PolarCursor() {
     document.addEventListener("pointermove", move);
     document.addEventListener("pointerover", pointerOver);
     document.addEventListener("click", click);
-    document.addEventListener("contextmenu", click);
+    const contextMenu = (event: MouseEvent) => {
+      if (!desktop.matches) return;
+      event.preventDefault();
+      click(event);
+    };
+    document.addEventListener("contextmenu", contextMenu);
     const syncCursorClass = () => {
       document.body.classList.toggle("polar-cursor", desktop.matches);
     };
@@ -135,7 +141,7 @@ export function PolarCursor() {
       document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerover", pointerOver);
       document.removeEventListener("click", click);
-      document.removeEventListener("contextmenu", click);
+      document.removeEventListener("contextmenu", contextMenu);
     };
   }, []);
 

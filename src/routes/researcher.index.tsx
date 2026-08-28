@@ -25,6 +25,7 @@ import { ResearchDetailModal } from "@/components/polaris/cards";
 import type { ResearchItem } from "@/lib/data/types";
 import { toast } from "sonner";
 import { InteractiveGlobe } from "@/components/polaris/interactive-globe";
+import { getAuthSession } from "@/lib/auth";
 
 export const Route = createFileRoute("/researcher/")({
   head: () => ({
@@ -44,6 +45,8 @@ export const Route = createFileRoute("/researcher/")({
 
 function ResearcherDashboard() {
   const { allResearch } = useApp();
+  const session = getAuthSession();
+  const researcherName = [session?.firstName, session?.middleName, session?.lastName].filter(Boolean).join(" ") || session?.email || "Researcher";
   const [selectedItem, setSelectedItem] = useState<ResearchItem | null>(null);
 
   const published = allResearch.filter((r) => r.status === "Published");
@@ -63,10 +66,10 @@ function ResearcherDashboard() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-primary">
-              <FlaskConical size={12} /> NCPOR Scientist Portal
+              <FlaskConical size={12} /> Polaris Portal
             </p>
             <h1 className="mt-3 font-display text-3xl font-bold text-foreground md:text-4xl">
-              Welcome back, <span className="text-aurora">Dr. Geeta Nair</span>
+              Welcome back, <span className="text-aurora">{researcherName}</span>
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
               National Centre for Polar & Ocean Research (NCPOR) · Cryosphere & Sea-Ice Division

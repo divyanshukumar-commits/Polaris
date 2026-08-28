@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Bell, Bookmark, Compass, Globe2, LayoutDashboard, Library, LogOut,
-  Menu, MessageSquareText, Rocket, Search, Settings, ShieldCheck, Upload, Users, X,
+  Menu, MessageSquareText, Rocket, Search, Settings, ShieldCheck, Upload, Users, X, Bot, UserRound,
 } from "lucide-react";
 import { Logo } from "./core";
 import { cn } from "@/lib/utils";
@@ -41,18 +41,16 @@ const navConfig: Record<Role, NavItem[]> = {
   ],
 };
 
-const roleMeta: Record<Role, { name: string; title: string; initials: string }> = {
-  user: { name: "Aarav Sharma", title: "Explorer · Student", initials: "AS" },
-  researcher: { name: "Dr. Geeta Nair", title: "Researcher · NCPOR", initials: "GN" },
-  admin: { name: "Dr. Nandini Rao", title: "Administrator", initials: "NR" },
-};
-
 export function AppLayout({ role, children }: { role: Role; children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountPanel, setAccountPanel] = useState<"profile" | "settings" | null>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const nav = navConfig[role];
-  const meta = roleMeta[role];
+  const session = getAuthSession();
+  const name = [session?.firstName, session?.middleName, session?.lastName].filter(Boolean).join(" ") || session?.email || "Polaris user";
+  const initials = name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  const roleTitle = role === "researcher" ? "Researcher" : role === "admin" ? "Administrator" : "Explorer";
 
   useEffect(() => {
     const session = getAuthSession();
@@ -157,22 +155,42 @@ export function AppLayout({ role, children }: { role: Role; children: ReactNode 
             </button>
             <button
               aria-label="Settings"
-              onClick={() => toast.info("Settings", { description: "Demo build — preferences are illustrative." })}
+              onClick={() => setAccountPanel("settings")}
               className="rounded-lg border border-border bg-secondary/50 p-2 text-muted-foreground transition-colors hover:text-primary"
             >
               <Settings size={16} />
             </button>
-            <div className="ml-1 flex items-center gap-2.5 rounded-xl border border-border bg-secondary/50 py-1.5 pl-1.5 pr-3">
+            <button onClick={() => setAccountPanel("profile")} className="ml-1 flex items-center gap-2.5 rounded-xl border border-border bg-secondary/50 py-1.5 pl-1.5 pr-3 text-left hover:border-primary/40">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 font-mono text-[11px] font-bold text-primary border border-primary/30">
-                {meta.initials}
+                {session?.profileImage ? <img src={session.profileImage} alt="" className="h-full w-full rounded-lg object-cover" /> : initials}
               </span>
               <div className="hidden text-left sm:block">
-                <p className="text-xs font-semibold leading-tight text-foreground">{meta.name}</p>
-                <p className="text-[10px] leading-tight text-muted-foreground">{meta.title}</p>
+                <p className="text-xs font-semibold leading-tight text-foreground">{name}</p>
+                <p className="text-[10px] leading-tight text-muted-foreground">{roleTitle}</p>
               </div>
-            </div>
+            </button>
           </div>
         </header>
+        {accountPanel && (
+          <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/20 p-4 pt-16" onClick={() => setAccountPanel(null)}>
+            <section className="glass-strong w-full max-w-sm rounded-2xl p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15 text-primary font-bold">{initials}</span>
+                  <div><h2 className="font-display text-base font-bold text-foreground">{accountPanel === "profile" ? "Profile" : "Settings"}</h2><p className="text-xs text-muted-foreground">{roleTitle} account</p></div>
+                </div>
+                <button onClick={() => setAccountPanel(null)} aria-label="Close account panel"><X size={16} /></button>
+              </div>
+              {accountPanel === "profile" ? (
+                <div className="mt-4 space-y-3 text-sm">
+                  <p className="font-semibold text-foreground">{name}</p><p className="text-muted-foreground">{session?.email}</p><p className="text-muted-foreground">Phone: {session?.phone || "Not provided"}</p><p className="text-muted-foreground">Organization: {session?.organization || "Not provided"}</p>
+                </div>
+              ) : (
+                <div className="mt-4 space-y-3 text-sm text-muted-foreground"><label className="flex items-center justify-between">Email notifications <input type="checkbox" defaultChecked /></label><label className="flex items-center justify-between">Public research profile <input type="checkbox" defaultChecked={role === "researcher"} /></label><p className="rounded-lg bg-secondary/60 p-3 text-xs">Account preferences are stored locally in this demo workspace.</p></div>
+              )}
+            </section>
+          </div>
+        )}
         <main className="flex-1 px-4 py-8 md:px-8">{children}</main>
         <footer className="border-t border-border px-4 py-6 md:px-8">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -181,6 +199,7 @@ export function AppLayout({ role, children }: { role: Role; children: ReactNode 
           </div>
         </footer>
       </div>
+      <button className="fixed bottom-5 left-5 z-40 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/40 bg-primary/15 text-primary shadow-lg shadow-primary/20 transition-transform hover:scale-105" aria-label="Open Polaris AI assistant" title="Polaris AI assistant" onClick={() => role === "user" ? navigate({ to: "/user/assistant" }) : toast.info("Polaris AI assistant", { description: "The assistant shell is ready for this workspace." })}><Bot size={21} /></button>
     </div>
   );
 }

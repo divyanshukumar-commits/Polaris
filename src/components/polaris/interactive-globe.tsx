@@ -52,8 +52,18 @@ function toPosition(lat: number, lon: number, radius: number) {
   return new THREE.Vector3(...latLonToVec3(lat, lon)).multiplyScalar(radius);
 }
 
+function currentSunPosition() {
+  const now = new Date();
+  const day = Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - Date.UTC(now.getUTCFullYear(), 0, 0)) / 86400000);
+  const declination = 23.44 * Math.sin(((360 / 365) * (day - 81) * Math.PI) / 180);
+  const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
+  const longitude = (12 - utcHours) * 15;
+  return toPosition(declination, longitude, 5);
+}
+
 export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const onSelectRef = useRef(onSelect);
   const [selected, setSelected] = useState<GlobeMarker | null>(null);
   const [hovered, setHovered] = useState<GlobeMarker | null>(null);
@@ -61,6 +71,7 @@ export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps)
   const [showMarkers, setShowMarkers] = useState(true);
   const [showIce, setShowIce] = useState(true);
   const [dayLight, setDayLight] = useState(true);
+  const [zoomRequest, setZoomRequest] = useState(0);
 
   onSelectRef.current = onSelect;
   const [resetView, setResetView] = useState(0);
@@ -71,6 +82,7 @@ export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps)
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
     camera.position.z = 3.1;
+    cameraRef.current = camera;
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputEncoding = THREE.sRGBEncoding;
@@ -141,8 +153,8 @@ export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps)
     );
     globeGroup.add(atmosphere);
     const iceMaterial = new THREE.MeshPhongMaterial({ color: 0xd9f4ff, transparent: true, opacity: 0.82 });
-    const northIce = new THREE.Mesh(new THREE.SphereGeometry(1.012, 64, 32, 0, Math.PI * 2, 0, Math.PI / 7), iceMaterial);
-    const southIce = new THREE.Mesh(new THREE.SphereGeometry(1.012, 64, 32, 0, Math.PI * 2, Math.PI - Math.PI / 7, Math.PI / 7), iceMaterial);
+    const northIce = new THREE.Mesh(new THREE.SphereGeometry(1.006, 64, 32, 0, Math.PI * 2, 0, Math.PI / 8), iceMaterial);
+    const southIce = new THREE.Mesh(new THREE.SphereGeometry(1.006, 64, 32, 0, Math.PI * 2, Math.PI - Math.PI / 8, Math.PI / 8), iceMaterial);
     globeGroup.add(northIce, southIce);
 
     const markerGroup = new THREE.Group();
@@ -170,7 +182,7 @@ export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps)
     scene.add(new THREE.Points(starsGeometry, starsMaterial));
     const ambientLight = new THREE.AmbientLight(0x6f8da3, 0.2);
     const sunLight = new THREE.DirectionalLight(0xfff6e6, dayLight ? 2.1 : 0.58);
-    sunLight.position.set(4, 2, 5);
+    sunLight.position.copy(currentSunPosition());
     scene.add(ambientLight, sunLight);
 
     const raycaster = new THREE.Raycaster();
@@ -232,16 +244,11 @@ export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps)
         }
       }
     };
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      camera.position.z = THREE.MathUtils.clamp(camera.position.z + event.deltaY * 0.0015, 1.85, 4.6);
-    };
     const onPointerLeave = () => setHovered(null);
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     renderer.domElement.addEventListener("pointermove", onPointerMove);
     renderer.domElement.addEventListener("pointerup", onPointerUp);
     renderer.domElement.addEventListener("pointerleave", onPointerLeave);
-    renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("resize", resize);
     resize();
 
@@ -275,7 +282,7 @@ export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps)
       renderer.domElement.removeEventListener("pointermove", onPointerMove);
       renderer.domElement.removeEventListener("pointerup", onPointerUp);
       renderer.domElement.removeEventListener("pointerleave", onPointerLeave);
-      renderer.domElement.removeEventListener("wheel", onWheel);
+      cameraRef.current = null;
       earthGeometry.dispose();
       earthMaterial.dispose();
       fallbackTexture.dispose();
@@ -303,6 +310,12 @@ export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps)
     };
   }, [dayLight, resetView, showIce, showMarkers]);
 
+  useEffect(() => {
+    if (cameraRef.current) {
+      cameraRef.current.position.z = THREE.MathUtils.clamp(cameraRef.current.position.z + zoomRequest * 0.35, 1.85, 4.6);
+    }
+  }, [zoomRequest]);
+
   const linkedResearch = selected ? researchItems.filter((item) => item.expeditionId === selected.id) : [];
   const hoveredResearch = hovered ? researchItems.find((item) => item.expeditionId === hovered.id) : undefined;
   const activeCount = markers.filter((marker) => marker.status === "Active").length;
@@ -315,12 +328,16 @@ export function InteractiveGlobe({ className, onSelect }: InteractiveGlobeProps)
         <button onClick={() => setShowIce((value) => !value)} className={cn("flex items-center gap-1.5 rounded-lg px-2 py-1.5", showIce ? "bg-cyan-400/20 text-cyan-200" : "bg-slate-700/70 text-slate-400")} title="Toggle polar ice caps"><Snowflake size={13} /> Polar ice</button>
       </div>
       <button onClick={() => setResetView((value) => value + 1)} className="absolute right-3 top-3 rounded-lg border border-white/10 bg-[#071827]/80 p-2 text-slate-300 backdrop-blur-md hover:text-white" title="Reset globe view" aria-label="Reset globe view"><RotateCcw size={14} /></button>
-      <div className="absolute bottom-3 left-3 rounded-xl border border-white/10 bg-[#071827]/85 px-3 py-2 text-[10px] text-slate-300 backdrop-blur-md"><p className="font-mono uppercase tracking-wider text-cyan-200">Earth observation view</p><p className="mt-1">{markers.length} missions · {activeCount} active · scroll to zoom</p></div>
+      <div className="absolute right-3 bottom-3 flex items-center gap-1 rounded-xl border border-white/10 bg-[#071827]/85 p-1 text-[10px] text-slate-300 backdrop-blur-md">
+        <button onClick={() => setZoomRequest((value) => value - 1)} className="rounded-lg px-2 py-1.5 text-base leading-none hover:bg-white/10" title="Zoom out" aria-label="Zoom out">−</button>
+        <button onClick={() => setZoomRequest((value) => value + 1)} className="rounded-lg px-2 py-1.5 text-base leading-none hover:bg-white/10" title="Zoom in" aria-label="Zoom in">+</button>
+      </div>
+      <div className="absolute bottom-3 left-3 rounded-xl border border-white/10 bg-[#071827]/85 px-3 py-2 text-[10px] text-slate-300 backdrop-blur-md"><p className="font-mono uppercase tracking-wider text-cyan-200">Earth observation view</p><p className="mt-1">{markers.length} missions · {activeCount} active · use controls to zoom</p></div>
       {hovered && !selected && <div className="pointer-events-none absolute z-20 w-[220px] overflow-hidden rounded-lg border border-cyan-300/40 bg-[#071827]/95 text-[11px] text-white shadow-xl" style={{ left: Math.min(hoverPosition.x + 12, 16 + Math.max(0, (containerRef.current?.clientWidth ?? 240) - 236)), top: Math.min(hoverPosition.y + 12, Math.max(12, (containerRef.current?.clientHeight ?? 300) - 150)) }}>
         {(hovered.imageUrl ?? hoveredResearch?.imageUrl) && <img src={hovered.imageUrl ?? hoveredResearch?.imageUrl} alt={hovered.location} className="h-20 w-full object-cover" />}
         <div className="p-3">
           <p className="font-semibold text-cyan-200">{hovered.location}</p>
-          <p className="mt-0.5 text-slate-300">{hovered.category} · {hovered.status}</p>
+          <p className="mt-0.5 text-slate-300">{hovered.category} · Research {hovered.status === "Active" ? "ACTIVE" : "INACTIVE"}</p>
           <p className="mt-2 line-clamp-3 leading-relaxed text-slate-300">{hovered.objective ?? hovered.description ?? "Polar science field activity"}</p>
           {hoveredResearch && <p className="mt-2 truncate border-t border-white/10 pt-2 text-cyan-100">Research: {hoveredResearch.title}</p>}
         </div>

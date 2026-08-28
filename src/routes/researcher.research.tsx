@@ -17,9 +17,10 @@ import {
 import { PageHeader, RegionTag, StatusBadge } from "@/components/polaris/core";
 import { ResearchDetailModal } from "@/components/polaris/cards";
 import { useApp } from "@/lib/store";
-import type { ContentType, PolarRegion, ResearchItem, ResearchStatus, ScientificTopic } from "@/lib/data/types";
+import type { ContentType, Region, ResearchItem, Topic } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { getAuthSession } from "@/lib/auth";
 
 export const Route = createFileRoute("/researcher/research")({
   head: () => ({
@@ -44,8 +45,8 @@ const TYPES: ContentType[] = [
   "Dataset",
   "Educational Resource",
 ];
-const REGIONS: PolarRegion[] = ["Antarctic", "Arctic"];
-const TOPICS: ScientificTopic[] = [
+const REGIONS: Region[] = ["Antarctic", "Arctic"];
+const TOPICS: Topic[] = [
   "Climate",
   "Glaciology",
   "Oceanography",
@@ -65,14 +66,18 @@ function MyResearchPage() {
   // Form State
   const [title, setTitle] = useState("");
   const [type, setType] = useState<ContentType>("Research Paper");
-  const [region, setRegion] = useState<PolarRegion>("Antarctic");
-  const [topic, setTopic] = useState<ScientificTopic>("Glaciology");
-  const [authors, setAuthors] = useState("Dr. Geeta Nair, NCPOR Team");
+  const [region, setRegion] = useState<Region>("Antarctic");
+  const [topic, setTopic] = useState<Topic>("Glaciology");
+  const [authors, setAuthors] = useState("");
   const [institution, setInstitution] = useState("National Centre for Polar and Ocean Research (NCPOR)");
   const [year, setYear] = useState(2026);
   const [doi, setDoi] = useState("10.1016/j.polar.2026.");
   const [abstract, setAbstract] = useState("");
   const [tags, setTags] = useState("NCPOR, Antarctica, Ice Dynamics");
+  const [location, setLocation] = useState("");
+  const [coverImage, setCoverImage] = useState("");
+  const [documentUrl, setDocumentUrl] = useState("");
+  const [visibility, setVisibility] = useState<"public" | "restricted">("public");
 
   const filtered = allResearch.filter((item) => {
     if (filterStatus !== "All" && item.status !== filterStatus) return false;
@@ -109,6 +114,16 @@ function MyResearchPage() {
       keyFindings: [],
       status: "Under Review",
       views: 0,
+      location: location.trim() || undefined,
+      publicationDate: new Date().toISOString().slice(0, 10),
+      publisherName: getAuthSession()?.firstName ? [getAuthSession()?.firstName, getAuthSession()?.middleName, getAuthSession()?.lastName].filter(Boolean).join(" ") : undefined,
+      publisherEmail: getAuthSession()?.email,
+      publisherImageUrl: getAuthSession()?.profileImage,
+      imageUrl: coverImage || undefined,
+      visibility,
+      downloadUrl: visibility === "public" ? documentUrl || undefined : undefined,
+      downloadAllowed: visibility === "public" && Boolean(documentUrl),
+      verified: false,
     };
 
     submitResearch(newItem);
@@ -119,6 +134,9 @@ function MyResearchPage() {
     // Reset Form & Close Modal
     setTitle("");
     setAbstract("");
+    setLocation("");
+    setDocumentUrl("");
+    setCoverImage("");
     setIsModalOpen(false);
   };
 
@@ -337,6 +355,19 @@ function MyResearchPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1">Research location *</label>
+                    <input required value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g., Maitri Station, Antarctica" className="w-full rounded-xl border border-input bg-background/80 px-3.5 py-2 text-xs text-foreground outline-none focus:border-primary/60" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1">Visibility</label>
+                    <select value={visibility} onChange={(e) => setVisibility(e.target.value as "public" | "restricted")} className="w-full rounded-xl border border-input bg-background/80 px-3 py-2 text-xs text-foreground outline-none focus:border-primary/60">
+                      <option value="public">Public</option><option value="restricted">Restricted / private</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
                     <label className="block text-xs font-semibold text-foreground mb-1">DOI (Optional)</label>
                     <input
                       value={doi}
@@ -366,6 +397,17 @@ function MyResearchPage() {
                     placeholder="Provide a comprehensive scientific abstract describing methodology, dataset parameters, and core findings..."
                     className="w-full rounded-xl border border-input bg-background/80 p-3 text-xs text-foreground outline-none focus:border-primary/60"
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1">Cover / publisher image</label>
+                    <input type="url" value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="https://..." className="w-full rounded-xl border border-input bg-background/80 px-3.5 py-2 text-xs text-foreground outline-none focus:border-primary/60" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1">Research paper URL</label>
+                    <input type="url" value={documentUrl} onChange={(e) => setDocumentUrl(e.target.value)} placeholder="https://.../paper.pdf" className="w-full rounded-xl border border-input bg-background/80 px-3.5 py-2 text-xs text-foreground outline-none focus:border-primary/60" />
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-border">

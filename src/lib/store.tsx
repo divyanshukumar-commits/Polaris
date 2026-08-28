@@ -18,9 +18,20 @@ interface AppState {
 }
 
 const AppContext = createContext<AppState | null>(null);
+const EXTRA_RESEARCH_KEY = "polaris-research-submissions";
+
+function readExtraResearch() {
+  if (typeof window === "undefined") return [] as ResearchItem[];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(EXTRA_RESEARCH_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed as ResearchItem[] : [];
+  } catch {
+    return [] as ResearchItem[];
+  }
+}
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [extra, setExtra] = useState<ResearchItem[]>([]);
+  const [extra, setExtra] = useState<ResearchItem[]>(readExtraResearch);
   const [overrides, setOverrides] = useState<Record<string, ResearchStatus>>({});
   const [deleted, setDeleted] = useState<string[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
@@ -47,7 +58,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isSaved = useCallback((id: string) => savedIds.includes(id), [savedIds]);
 
   const submitResearch = useCallback((item: ResearchItem) => {
-    setExtra((prev) => [item, ...prev]);
+    setExtra((prev) => {
+      const next = [item, ...prev];
+      window.localStorage.setItem(EXTRA_RESEARCH_KEY, JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   const setResearchStatus = useCallback((id: string, status: ResearchStatus) => {

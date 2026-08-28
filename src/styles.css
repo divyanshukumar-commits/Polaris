@@ -358,6 +358,14 @@
   pointer-events: none;
   transform: translate(-50%, -50%);
 }
+.polar-cursor-snow {
+  width: 4px;
+  height: 4px;
+  border: 1px solid oklch(0.92 0.04 220 / 85%);
+  background: oklch(0.85 0.08 215 / 30%);
+  box-shadow: 0 0 8px oklch(0.79 0.12 215 / 70%);
+  animation: cursor-snow 520ms ease-out forwards;
+}
 
 .animate-globe-spin {
   transform-box: fill-box;
@@ -417,6 +425,11 @@
   border: 1px solid var(--color-primary);
   border-style: dashed;
   animation: cursor-scan 620ms ease-out forwards;
+}
+
+@keyframes cursor-snow {
+  0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
+  100% { opacity: 0; transform: translate(-50%, -62%) scale(1.8) rotate(45deg); }
 }
 
 @utility animate-orbit {

@@ -35,6 +35,15 @@ export interface ResearchItem {
   expeditionId?: string;
   doi?: string;
   downloadUrl?: string;
+  verified?: boolean;
+  access?: "public" | "restricted" | "confidential";
+  downloadAllowed?: boolean;
+  location?: string;
+  publicationDate?: string;
+  publisherName?: string;
+  publisherEmail?: string;
+  publisherImageUrl?: string;
+  visibility?: "public" | "restricted";
   imageUrl?: string;
   videoUrl?: string;
 }

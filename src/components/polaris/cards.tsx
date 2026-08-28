@@ -7,7 +7,7 @@ import { mediaAssets } from "@/lib/data/media";
 import { useApp } from "@/lib/store";
 import { RegionTag, SectionTitle, StatusBadge } from "./core";
 import { cn } from "@/lib/utils";
-import { downloadResearchItem } from "@/lib/download";
+import { canDownloadResearchItem, downloadResearchItem } from "@/lib/download";
 
 /* ---------- Procedural polar visual (no external images) ---------- */
 export function MediaVisual({
@@ -116,6 +116,10 @@ export function ResearchCard({ item, onOpen }: { item: ResearchItem; onOpen: (r:
       <h3 className="mt-3 font-display text-[15px] font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
         {item.title}
       </h3>
+      {item.publisherName && <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+        {item.publisherImageUrl ? <img src={item.publisherImageUrl} alt="" className="h-6 w-6 rounded-full object-cover" /> : <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">{item.publisherName.slice(0, 1)}</span>}
+        <span>{item.publisherName}</span>
+      </div>}
       <p className="mt-1.5 text-xs text-muted-foreground">
         {item.authors.slice(0, 2).join(", ")}
         {item.authors.length > 2 && " et al."} · {item.year}
@@ -131,7 +135,7 @@ export function ResearchCard({ item, onOpen }: { item: ResearchItem; onOpen: (r:
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
         <span className="font-mono text-[10px] text-muted-foreground">{item.views.toLocaleString()} views</span>
         <div className="flex items-center gap-2">
-          {item.downloadUrl && (
+          {canDownloadResearchItem(item) && (
             <button
               onClick={() => {
                 downloadResearchItem(item);
@@ -143,6 +147,9 @@ export function ResearchCard({ item, onOpen }: { item: ResearchItem; onOpen: (r:
             >
               <Download size={14} />
             </button>
+          )}
+          {item.downloadUrl && !canDownloadResearchItem(item) && (
+            <span className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-2 py-1.5 text-[10px] font-semibold text-amber-200" title="This resource is restricted or not verified">Restricted</span>
           )}
           <button
             onClick={() => onOpen(item)}
@@ -193,9 +200,10 @@ export function ResearchDetailModal({
           </button>
         </div>
         <h2 className="mt-4 font-display text-2xl font-bold leading-tight text-foreground">{item.title}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {item.authors.join(", ")} · {item.institution} · {item.year}
-        </p>
+        <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
+          {item.publisherImageUrl && <img src={item.publisherImageUrl} alt={`${item.publisherName ?? "Publisher"} profile`} className="h-10 w-10 rounded-full border border-primary/30 object-cover" />}
+          <div><p>{item.publisherName ?? item.authors.join(", ")}</p><p className="text-xs">{item.institution} · {item.publicationDate ?? item.year}{item.location ? ` · ${item.location}` : ""}</p></div>
+        </div>
 
         <h3 className="mt-6 font-display text-sm font-semibold uppercase tracking-wider text-primary">Abstract</h3>
         <p className="mt-2 text-sm leading-relaxed text-foreground/85">{item.abstract}</p>
@@ -245,7 +253,7 @@ export function ResearchDetailModal({
           >
             Read Research
           </button>
-          {item.downloadUrl && (
+          {canDownloadResearchItem(item) && (
             <button
               onClick={() => {
                 downloadResearchItem(item);
@@ -255,6 +263,9 @@ export function ResearchDetailModal({
             >
               <Download size={13} /> Download Research Paper
             </button>
+          )}
+          {item.downloadUrl && !canDownloadResearchItem(item) && (
+            <span className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-4 py-2 text-xs font-semibold text-amber-200">Download restricted</span>
           )}
           <button
             onClick={() => {

@@ -14,13 +14,13 @@ import {
   ShieldCheck,
   Ship,
   Sparkles,
-  User,
+  User, Phone,
   Zap,
 } from "lucide-react";
 import { Logo } from "@/components/polaris/core";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { authenticateAccount, registerAccount, type Role } from "@/lib/auth";
+import { authenticateAccount, registerAccount, type RegistrationProfile, type Role } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -108,28 +108,57 @@ function LoginPage() {
     return requested === "researcher" || requested === "admin" ? requested : "user";
   });
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState(() =>
-    ROLE_DATA[roleFromUrl === "researcher" || roleFromUrl === "admin" ? roleFromUrl : "user"].defaultEmail,
-  );
+  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [middleName, setMiddleName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(true);
   const [signupComplete, setSignupComplete] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters.");
+    setFormError("");
+    const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email.trim());
+    const phoneIsValid = /^\+?[0-9()\s.-]{7,20}$/.test(phone.trim()) && phone.replace(/\D/g, "").length >= 7;
+    if (isSignUp && (!firstName.trim() || !lastName.trim())) {
+      setFormError("First name and last name are required.");
       return;
     }
-    if (!agreed) {
+    if (!emailIsValid) {
+      setFormError("Enter a valid email address.");
+      return;
+    }
+    if (isSignUp && !phoneIsValid) {
+      setFormError("Enter a valid phone number.");
+      return;
+    }
+    if (password.length < 6) {
+      setFormError("Password must be at least 6 characters.");
+      return;
+    }
+    if (isSignUp && password !== confirmPassword) {
+      setFormError("Password and confirmation must match.");
+      return;
+    }
+    if (isSignUp && !agreed) {
       toast.error("Please agree to the terms of service.");
       return;
     }
     if (isSignUp) {
-      registerAccount(email, password, role);
+      const profile: RegistrationProfile = { firstName: firstName.trim(), middleName: middleName.trim() || undefined, lastName: lastName.trim(), phone: phone.trim() };
+      if (!registerAccount(email, password, role, profile)) {
+        setFormError("An account with this email already exists. Please sign in.");
+        return;
+      }
       setIsSignUp(false);
+      setEmail("");
       setPassword("");
+      setConfirmPassword("");
       setSignupComplete(true);
       toast.success("Signed up successfully", {
         description: "Your account was created. Sign in to continue.",
@@ -217,7 +246,7 @@ function LoginPage() {
                         )}
                       >
                         <span className="flex items-center gap-1.5 text-xs font-bold text-[#0e2a47]"><Icon size={14} /> {data.title}</span>
-                        <span className="mt-1 block text-[10px] leading-tight text-slate-500">{data.desc}</span>
+                        <span className="sr-only">{data.desc}</span>
                       </button>
                     );
                   })}
@@ -230,6 +259,14 @@ function LoginPage() {
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">
                   <p className="font-bold">Account Created Successfully</p>
                   <p className="mt-1 text-xs">Your Polaris account has been created. Please sign in to continue.</p>
+                </div>
+              )}
+              {formError && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700" role="alert">{formError}</p>}
+              {isSignUp && (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <input required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" className="rounded-full bg-[#c7f2f4] px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-500" />
+                  <input value={middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder="Middle name (optional)" className="rounded-full bg-[#c7f2f4] px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-500" />
+                  <input required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" className="rounded-full bg-[#c7f2f4] px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-500" />
                 </div>
               )}
               {/* E-mail Input */}
@@ -246,6 +283,10 @@ function LoginPage() {
                   />
                 </div>
               </div>
+
+              {isSignUp && (
+                <input required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number" inputMode="tel" className="w-full rounded-full bg-[#c7f2f4] px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-500" />
+              )}
 
               {/* Password Input */}
               <div className="relative">
@@ -269,8 +310,18 @@ function LoginPage() {
                 </div>
               </div>
 
+              {isSignUp && (
+                <div className="relative flex items-center rounded-full bg-[#c7f2f4] px-4 py-3 text-slate-800 shadow-inner">
+                  <Lock size={18} className="mr-3 shrink-0 text-[#139ba5]" />
+                  <input type={showPassword ? "text" : "password"} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="confirm password" className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide confirm password" : "Show confirm password"} className="text-[#139ba5] hover:text-[#0b6b72]">
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              )}
+
               {/* Terms of Service Checkbox */}
-              <div className="flex items-center gap-2 text-xs text-slate-600 pt-1">
+              {isSignUp && <div className="flex items-center gap-2 text-xs text-slate-600 pt-1">
                 <input
                   type="checkbox"
                   id="terms"
@@ -282,7 +333,7 @@ function LoginPage() {
                   I agree all statements in{" "}
                   <span className="text-[#18c2ce] font-semibold hover:underline">terms of service</span>.
                 </label>
-              </div>
+              </div>}
 
               {/* Primary Cyan Submit Pill Button */}
               <button
@@ -329,8 +380,9 @@ function LoginPage() {
             alt="Glacier and snow-covered polar landscape"
             className="absolute inset-0 h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent_12%,rgba(70,255,193,0.12)_42%,rgba(80,190,255,0.2)_58%,transparent_88%)] mix-blend-screen animate-aurora" aria-hidden="true" />
-
+  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/40"
+  aria-hidden="true"
+/>
           {/* Jagged Iceberg White Border Overlay dividing Left and Right */}
           <svg
             className="absolute -left-1 top-0 bottom-0 h-full w-14 text-white fill-current z-10"

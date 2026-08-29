@@ -1,0 +1,12 @@
+src/components/polaris/cards.tsx(258,17): error TS2304: Cannot find name 'FilePlus'.
+src/components/polaris/cards.tsx(260,17): error TS2304: Cannot find name 'Upload'.
+src/components/polaris/submit-research-modal.tsx(149,19): error TS2339: Property 'institution' does not exist on type 'AuthSession'.
+src/components/polaris/submit-research-modal.tsx(150,32): error TS2339: Property 'institution' does not exist on type 'AuthSession'.
+src/components/polaris/submit-research-modal.tsx(376,11): error TS2375: Type '{ id: string; title: string; type: ContentType; region: Region; topic: Topic; authors: string[]; institution: string; year: number; abstract: string; doi: string | undefined; ... 16 more ...; timeline: ResearchTimelineEvent[]; }' is not assignable to type 'ResearchItem' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'gallery' are incompatible.
+    Type '{ id: string; url: string; caption: string; credit?: string; tag?: string; }[] | undefined' is not assignable to type 'ResearchGalleryItem[]'.
+      Type 'undefined' is not assignable to type 'ResearchGalleryItem[]'.
+src/lib/data/research.ts(299,58): error TS2304: Cannot find name 'ResearchTimelineEvent'.
+src/lib/data/research.ts(310,17): error TS2304: Cannot find name 'ResearchTimelineEvent'.
+src/lib/data/research.ts(395,57): error TS2304: Cannot find name 'ResearchGalleryItem'.
+src/lib/data/research.ts(422,61): error TS2304: Cannot find name 'ResearchAttachment'.

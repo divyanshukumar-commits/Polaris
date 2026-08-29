@@ -1,0 +1,52 @@
+
+> lint
+> eslint .
+
+
+C:\Users\divya\Desktop\Polaris\Polaris-Frontend-main\src\components\polaris\cards.tsx
+   34:9    error  Replace `·getResearchAttachments,·getResearchGallery,·getResearchTimeline·` with `⏎··getResearchAttachments,⏎··getResearchGallery,⏎··getResearchTimeline,⏎`  prettier/prettier
+  239:93   error  Replace `"overview"` with `⏎····"overview",⏎··`                                                                                                              prettier/prettier
+  311:77   error  Replace `⏎··············{item.topic}⏎············` with `{item.topic}`                                                                                       prettier/prettier
+  374:58   error  Unexpected any. Specify a different type                                                                                                                     @typescript-eslint/no-explicit-any
+  490:72   error  Replace `No·Research·Imagery·Attached` with `⏎····················No·Research·Imagery·Attached⏎··················`                                           prettier/prettier
+  492:100  error  Insert `⏎···················`                                                                                                                                prettier/prettier
+  542:74   error  Replace `⏎··························👤·{event.actor}⏎························` with `👤·{event.actor}`                                                       prettier/prettier
+
+C:\Users\divya\Desktop\Polaris\Polaris-Frontend-main\src\components\polaris\submit-research-modal.tsx
+  510:29   error  Insert `{"·"}⏎···················`                                                                                                                                                                                                                                                             prettier/prettier
+  557:28   error  Replace `·className={uploadProgress·===·100·?·"text-emerald-400·font-bold"·:·"text-cyan-300"}` with `⏎························className={⏎··························uploadProgress·===·100·?·"text-emerald-400·font-bold"·:·"text-cyan-300"⏎························}⏎······················`  prettier/prettier
+  558:48   error  Replace `·?·"✓·Upload·&·Checksum·Complete"` with `⏎··························?·"✓·Upload·&·Checksum·Complete"⏎·························`                                                                                                                                                       prettier/prettier
+  590:74   error  Replace `Manuscript·/·Paper·Title·*` with `⏎··················Manuscript·/·Paper·Title·*⏎················`                                                                                                                                                                                     prettier/prettier
+  632:76   error  Replace `Scientific·Discipline` with `⏎····················Scientific·Discipline⏎··················`                                                                                                                                                                                           prettier/prettier
+  651:76   error  Replace `Authors·(comma-separated)·*` with `⏎····················Authors·(comma-separated)·*⏎··················`                                                                                                                                                                               prettier/prettier
+  663:76   error  Replace `Affiliation·/·Institution` with `⏎····················Affiliation·/·Institution⏎··················`                                                                                                                                                                                   prettier/prettier
+  675:74   error  Replace `Abstract·/·Plain·Summary·*` with `⏎··················Abstract·/·Plain·Summary·*⏎················`                                                                                                                                                                                     prettier/prettier
+  807:101  error  Insert `⏎·················`                                                                                                                                                                                                                                                                    prettier/prettier
+
+C:\Users\divya\Desktop\Polaris\Polaris-Frontend-main\src\components\ui\badge.tsx
+  32:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\divya\Desktop\Polaris\Polaris-Frontend-main\src\components\ui\button.tsx
+  49:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\divya\Desktop\Polaris\Polaris-Frontend-main\src\components\ui\form.tsx
+  163:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\divya\Desktop\Polaris\Polaris-Frontend-main\src\components\ui\navigation-menu.tsx
+  111:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\divya\Desktop\Polaris\Polaris-Frontend-main\src\components\ui\sidebar.tsx
+  743:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\divya\Desktop\Polaris\Polaris-Frontend-main\src\components\ui\toggle.tsx
+  42:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\divya\Desktop\Polaris\Polaris-Frontend-main\src\lib\data\types.ts
+  25:13  error  Replace `·"created"·|·"upload"·|·"edit"·|·"collaborator"·|·"submitted"·|·"review"·|·"approved"·|·"rejected"·|·"published"` with `⏎····|·"created"⏎····|·"upload"⏎····|·"edit"⏎····|·"collaborator"⏎····|·"submitted"⏎····|·"review"⏎····|·"approved"⏎····|·"rejected"⏎····|·"published"⏎···`  prettier/prettier
+
+C:\Users\divya\Desktop\Polaris\Polaris-Frontend-main\src\lib\store.tsx
+  127:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+✖ 24 problems (17 errors, 7 warnings)
+  16 errors and 0 warnings potentially fixable with the `--fix` option.
+
